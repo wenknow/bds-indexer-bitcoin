@@ -1,5 +1,5 @@
 import os
-from neurons.setup_logger import setup_logger
+from setup_logger import setup_logger
 from neo4j import GraphDatabase
 
 logger = setup_logger("GraphIndexer")

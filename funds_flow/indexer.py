@@ -1,13 +1,13 @@
 import os
 import signal
 import time
-from neurons.setup_logger import setup_logger
-from neurons.nodes.factory import NodeFactory
-from neurons.nodes.bitcoin.node_utils import parse_block_data
-from neurons.miners.bitcoin.funds_flow.graph_indexer import GraphIndexer
-from neurons.miners.bitcoin.funds_flow.graph_search import GraphSearch
+from setup_logger import setup_logger
+from factory import NodeFactory
+from node_utils import parse_block_data
+from funds_flow.graph_indexer import GraphIndexer
+from funds_flow.graph_search import GraphSearch
 
-from insights.protocol import NETWORK_BITCOIN
+from protocol import NETWORK_BITCOIN
 
 # Global flag to signal shutdown
 shutdown_flag = False

@@ -1,12 +1,12 @@
 import os
 import time
 import signal
-from neurons.setup_logger import setup_logger
-from neurons.nodes.factory import NodeFactory
-from neurons.nodes.bitcoin.node_utils import parse_block_data
-from neurons.miners.bitcoin.balance_tracking.balance_indexer import BalanceIndexer
+from setup_logger import setup_logger
+from factory import NodeFactory
+from node_utils import parse_block_data
+from balance_tracking.balance_indexer import BalanceIndexer
 
-from insights.protocol import NETWORK_BITCOIN
+from protocol import NETWORK_BITCOIN
 
 
 # Global flag to signal shutdown

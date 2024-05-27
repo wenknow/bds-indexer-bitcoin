@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from neurons.setup_logger import setup_logger
+from setup_logger import setup_logger
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.dialects.postgresql import insert

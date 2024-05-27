@@ -1,7 +1,7 @@
 import os
 
-from neurons.miners.bitcoin.funds_flow.graph_indexer import GraphIndexer
-from neurons.miners.bitcoin.funds_flow.graph_search import GraphSearch
+from funds_flow.graph_indexer import GraphIndexer
+from funds_flow.graph_search import GraphSearch
 
 
 if __name__ == '__main__':
