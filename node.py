@@ -15,7 +15,7 @@ from node_utils import (
 )
 from setup_logger import setup_logger
 
-from .node_utils import initialize_tx_out_hash_table, get_tx_out_hash_table_sub_keys
+from node_utils import initialize_tx_out_hash_table, get_tx_out_hash_table_sub_keys
 
 import argparse
 import pickle
