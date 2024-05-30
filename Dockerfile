@@ -25,9 +25,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all remaining project files to the working directory
 COPY . .
 
-# Install the project package itself
-RUN pip install --no-cache-dir .
-
 # Make the scripts executable
 RUN chmod +x scripts/*
 
