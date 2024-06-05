@@ -1,5 +1,4 @@
-from insights import protocol
-
+from protocols import llm_engine
 import os
 
 
@@ -7,13 +6,13 @@ class QueryBuilder:
     
     class __InnerQueryBuilder:
         @staticmethod
-        def build_search_query(query: protocol.Query) -> str:
+        def build_search_query(query: llm_engine.Query) -> str:
             if query.target is None:
-                raise Exception(protocol.LLM_ERROR_SEARCH_TARGET_NOT_SUPPORTED)
+                raise Exception(llm_engine.LLM_ERROR_SEARCH_TARGET_NOT_SUPPORTED)
             if query.limit is None:
-                raise Exception(protocol.LLM_ERROR_SEARCH_LIMIT_NOT_SPECIFIED)
+                raise Exception(llm_engine.LLM_ERROR_SEARCH_LIMIT_NOT_SPECIFIED)
             if query.limit > os.getenv('QUERY_MAX_LIMIT', 50):
-                raise Exception(protocol.LLM_ERROR_SEARCH_LIMIT_EXCEEDED)
+                raise Exception(llm_engine.LLM_ERROR_SEARCH_LIMIT_EXCEEDED)
             
             if query.where is None:
                 query.where = {}
@@ -62,12 +61,12 @@ class QueryBuilder:
                 cypher_query += ';'
                 return cypher_query
         
-            raise Exception(protocol.LLM_ERROR_SEARCH_TARGET_NOT_SUPPORTED)
+            raise Exception(llm_engine.LLM_ERROR_SEARCH_TARGET_NOT_SUPPORTED)
     @staticmethod
-    def build_query(query: protocol.Query) -> str:
+    def build_query(query: llm_engine.Query) -> str:
         if query.type is None:
-            raise Exception(protocol.LLM_ERROR_TYPE_NOT_SUPPORTED)
-        if query.type == protocol.QUERY_TYPE_SEARCH:
+            raise Exception(llm_engine.LLM_ERROR_TYPE_NOT_SUPPORTED)
+        if query.type == llm_engine.QUERY_TYPE_SEARCH:
             return QueryBuilder.__InnerQueryBuilder.build_search_query(query)
         
-        raise Exception(protocol.LLM_ERROR_TYPE_NOT_SUPPORTED)
+        raise Exception(llm_engine.LLM_ERROR_TYPE_NOT_SUPPORTED)

@@ -2,9 +2,8 @@ import os
 import typing
 from neo4j import GraphDatabase
 
-from insights import protocol
 from funds_flow.query_builder import QueryBuilder
-
+from protocols.llm_engine import Query, QueryOutput
 
 class GraphSearch:
     def __init__(
@@ -38,7 +37,7 @@ class GraphSearch:
     def close(self):
         self.driver.close()
         
-    def execute_query(self, query: protocol.Query) -> protocol.QueryOutput:
+    def execute_query(self, query: Query) -> QueryOutput:
         # build cypher query
         cypher_query = QueryBuilder.build_query(query)
         # execute cypher query

@@ -9,7 +9,7 @@ from node_utils import parse_block_data
 from funds_flow.graph_indexer import GraphIndexer
 from funds_flow.graph_search import GraphSearch
 
-from protocol import NETWORK_BITCOIN
+from protocols.blockchain import NETWORK_BITCOIN
 
 # Global flag to signal shutdown
 shutdown_flag = False

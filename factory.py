@@ -1,4 +1,4 @@
-from protocol import NETWORK_BITCOIN
+from protocols.blockchain import NETWORK_BITCOIN
 from node import BitcoinNode
 
 class NodeFactory:
