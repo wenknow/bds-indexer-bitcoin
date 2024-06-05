@@ -4,7 +4,7 @@ from datetime import datetime
 from setup_logger import setup_logger
 from setup_logger import logger_extra_data
 
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
@@ -18,13 +18,14 @@ logger = setup_logger("BalanceIndexer")
 class BalanceIndexer:
     def __init__(self, db_url: str = None):
         if db_url is None:
-            self.db_url = os.environ.get("DB_CONNECTION_STRING", f"postgresql://postgres:changeit456$@localhost:5432/miner")
+            self.db_url = os.environ.get("DB_CONNECTION_STRING",
+                                         f"postgresql://postgres:changeit456$@localhost:5432/miner")
         else:
             self.db_url = db_url
 
         self.engine = create_engine(self.db_url)
         self.Session = sessionmaker(bind=self.engine)
-        
+
         # check if table exists and create if not
         connection = self.engine.connect()
 
@@ -32,11 +33,12 @@ class BalanceIndexer:
         inspector = inspect(self.engine)
 
         # Check if the table already exists
-        if (not inspector.has_table('balance_changes')) or (not inspector.has_table('current_balances')) or (not inspector.has_table('blocks')):
+        if (not inspector.has_table('balance_changes')) or (not inspector.has_table('current_balances')) or (
+        not inspector.has_table('blocks')):
             # Create the table in the database
             Base.metadata.create_all(self.engine)
             logger.info("Created 3 tables: `balance_changes`, `current_balances`, `blocks`")
-            
+
         # Close the connection
         connection.close()
 
@@ -46,28 +48,28 @@ class BalanceIndexer:
     def setup_db(self):
         with self.engine.connect() as conn:
             # Check if TimescaleDB extension is already installed
-            result = conn.execute("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb';")
+            result = conn.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb';"))
             if not result.fetchone():
-                conn.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;")
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"))
 
             # Check if balance_changes table exists
-            result = conn.execute("SELECT 1 FROM pg_class WHERE relname = 'balance_changes';")
+            result = conn.execute(text("SELECT 1 FROM pg_class WHERE relname = 'balance_changes';"))
             if result.fetchone():
                 # Check if balance_changes is already a hypertable
-                result = conn.execute(
-                    "SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'balance_changes';")
+                result = conn.execute(text(
+                    "SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'balance_changes';"))
                 if not result.fetchone():
                     # Create hypertable with chunking based on an approximate quarterly interval of blocks
-                    conn.execute(
-                        "SELECT create_hypertable('balance_changes', 'block', chunk_time_interval => interval '3 months');")
+                    conn.execute(text(
+                        "SELECT create_hypertable('balance_changes', 'block', chunk_time_interval => 12960, migrate_data => true);"))
 
             # Create indexes if they do not exist
-            conn.execute(
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_balance') THEN CREATE INDEX idx_balance ON current_balances (balance); END IF; END $$;")
-            conn.execute(
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_timestamp') THEN CREATE INDEX idx_timestamp ON blocks (timestamp); END IF; END $$;")
-            conn.execute(
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_block_timestamp') THEN CREATE INDEX idx_block_timestamp ON balance_changes (block_timestamp); END IF; END $$;")
+            conn.execute(text(
+                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_balance') THEN CREATE INDEX idx_balance ON current_balances (balance); END IF; END $$;"))
+            conn.execute(text(
+                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_timestamp') THEN CREATE INDEX idx_timestamp ON blocks (timestamp); END IF; END $$;"))
+            conn.execute(text(
+                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_block_timestamp') THEN CREATE INDEX idx_block_timestamp ON balance_changes (block_timestamp); END IF; END $$;"))
 
     def get_latest_block_number(self):
         with self.Session() as session:
@@ -78,7 +80,6 @@ class BalanceIndexer:
                 latest_block = 0
             return latest_block
 
-
     from decimal import getcontext
 
     # Set the precision high enough to handle satoshis for Bitcoin transactions
@@ -86,64 +87,68 @@ class BalanceIndexer:
 
     def create_rows_focused_on_balance_changes(self, block_data, _bitcoin_node):
         block_height = block_data.block_height
+        block_timestamp = datetime.utcfromtimestamp(block_data.timestamp)
         transactions = block_data.transactions
 
         balance_changes_by_address = {}
         changed_addresses = []
 
         for tx in transactions:
-            in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = _bitcoin_node.process_in_memory_txn_for_indexing(tx)
-            
+            in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, _ = _bitcoin_node.process_in_memory_txn_for_indexing(
+                tx)
+
             for address in input_addresses:
-                if not address in balance_changes_by_address:
+                if address not in balance_changes_by_address:
                     balance_changes_by_address[address] = 0
                     changed_addresses.append(address)
                 balance_changes_by_address[address] -= in_amount_by_address[address]
-            
+
             for address in output_addresses:
-                if not address in balance_changes_by_address:
+                if address not in balance_changes_by_address:
                     balance_changes_by_address[address] = 0
                     changed_addresses.append(address)
                 balance_changes_by_address[address] += out_amount_by_address[address]
 
-        logger.info(f"Adding row(s)...", extra = logger_extra_data(add_rows = len(changed_addresses)))
-        
-        new_rows = [BalanceChange(address=address, d_balance=balance_changes_by_address[address], block=block_height) for address in changed_addresses]
+        logger.info(f"Adding row(s)...", extra=logger_extra_data(add_rows=len(changed_addresses)))
+
+        new_rows = [BalanceChange(address=address, d_balance=balance_changes_by_address[address], block=block_height,
+                                  block_timestamp=block_timestamp) for address in changed_addresses]
 
         with self.Session() as session:
             try:
                 # Add the new rows to the balance_changes table
                 session.add_all(new_rows)
-                
+
                 # Update or add rows to the current_balance table
                 stmt = insert(CurrentBalance).values([
                     {
                         "address": change.address,
-                        "balance": change.d_balance
+                        "balance": change.d_balance,
                     } for change in new_rows])
 
                 do_update_stmt = stmt.on_conflict_do_update(
                     index_elements=["address"],
                     set_={'balance': stmt.excluded.balance + CurrentBalance.balance}
                 )
-                
+
                 session.execute(do_update_stmt)
-                
+
                 # Remove zero balances
                 session.query(CurrentBalance).filter(CurrentBalance.balance == 0).delete()
-                
+
                 # Add new row to blocks table
-                timestamp = datetime.utcfromtimestamp(block_data.timestamp)
-                session.add(Block(block_height=block_height, timestamp=timestamp))
-                
+                session.add(Block(block_height=block_height, timestamp=block_timestamp))
+
                 # Commit the session to save the changes to the database
                 session.commit()
-                
+
                 return True
-                
+
             except SQLAlchemyError as e:
                 # Rollback the session in case of an error
                 session.rollback()
-                logger.error(f"An exception occurred", extra = logger_extra_data(error = {'exception_type': e.__class__.__name__,'exception_message': str(e),'exception_args': e.args}))
-                
+                logger.error(f"An exception occurred", extra=logger_extra_data(
+                    error={'exception_type': e.__class__.__name__, 'exception_message': str(e),
+                           'exception_args': e.args}))
+
                 return False

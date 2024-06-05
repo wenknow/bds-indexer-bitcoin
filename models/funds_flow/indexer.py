@@ -1,14 +1,13 @@
 import os
 import signal
 import time
+
+from node.node import BitcoinNode
 from setup_logger import setup_logger
 from setup_logger import logger_extra_data
-from factory import NodeFactory
 from node.node_utils import parse_block_data
 from models.funds_flow.graph_indexer import GraphIndexer
 from models.funds_flow.graph_search import GraphSearch
-
-from protocols.blockchain import NETWORK_BITCOIN
 
 # Global flag to signal shutdown
 shutdown_flag = False
@@ -120,8 +119,7 @@ def do_smart_indexing(_bitcoin_node, _graph_indexer, _graph_search, start_height
     
     forward_block_height = start_height
     backward_block_height = start_height - 1
-    
-    
+
     while not shutdown_flag:
         current_block_height = _bitcoin_node.get_current_block_height() - skip_blocks
         block_height = forward_block_height
@@ -171,7 +169,7 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
 
-    bitcoin_node = NodeFactory.create_node(NETWORK_BITCOIN)
+    bitcoin_node = BitcoinNode()
     graph_indexer = GraphIndexer()
     graph_search = GraphSearch()
     
@@ -198,7 +196,7 @@ if __name__ == "__main__":
         logger.info("Syncing block range caches...")
         indexed_min_block_height, indexed_max_block_height = graph_search.get_min_max_block_height()
         graph_indexer.set_min_max_block_height_cache(indexed_min_block_height, indexed_max_block_height)
-        logger.info(f"Indexed block height range", extra = logger_extra_data(indexed_min_block_height = indexed_min_block_height, indexed_max_block_height = indexed_max_block_height))
+        logger.info(f"Indexed block height range", extra=logger_extra_data(indexed_min_block_height=indexed_min_block_height, indexed_max_block_height=indexed_max_block_height))
 
         if start_height > -1 and smart_mode: # if smart mode, run both forward and reverse indexer
             do_smart_indexing(bitcoin_node, graph_indexer, graph_search, start_height)

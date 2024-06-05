@@ -1,33 +1,22 @@
 from decimal import Decimal
-import bittensor as bt
 from bitcoinrpc.authproxy import AuthServiceProxy
-from protocols.llm_engine import MODEL_TYPE_FUNDS_FLOW, MODEL_TYPE_BALANCE_TRACKING
-from challenge import Challenge
-from node_utils import SATOSHI, VIN, VOUT, Transaction, parse_block_data
+from loguru import logger
 
-
-from abstract_node import Node
-from node_utils import (
+from .abstract_node import Node
+from .node_utils import (
     pubkey_to_address,
     construct_redeem_script,
     hash_redeem_script,
     create_p2sh_address,
-    check_if_block_is_valid_for_challenge
+    Transaction, SATOSHI, VOUT
 )
-from setup_logger import setup_logger
 from setup_logger import logger_extra_data
 
-from node_utils import initialize_tx_out_hash_table, get_tx_out_hash_table_sub_keys
+from .node_utils import initialize_tx_out_hash_table, get_tx_out_hash_table_sub_keys
 
-import argparse
 import pickle
 import time
 import os
-import random
-
-parser = argparse.ArgumentParser()
-bt.logging.add_args(parser)
-logger = setup_logger("BitcoinNode")
 
 
 class BitcoinNode(Node):
@@ -41,17 +30,17 @@ class BitcoinNode(Node):
         for pickle_file in pickle_files:
             if pickle_file:
                 self.load_tx_out_hash_table(pickle_file)
-                
+
         if node_rpc_url is None:
             self.node_rpc_url = (
-                os.environ.get("BITCOIN_NODE_RPC_URL")
-                or "http://bitcoinrpc:rpcpassword@127.0.0.1:8332"
+                    os.environ.get("BITCOIN_NODE_RPC_URL")
+                    or "http://bitcoinrpc:rpcpassword@127.0.0.1:8332"
             )
         else:
             self.node_rpc_url = node_rpc_url
 
     def load_tx_out_hash_table(self, pickle_path: str, reset: bool = False):
-        logger.info(f"Loading tx_out hash table", extra = logger_extra_data(pickle_path = pickle_path))
+        logger.info(f"Loading tx_out hash table", extra=logger_extra_data(pickle_path=pickle_path))
         with open(pickle_path, 'rb') as file:
             start_time = time.time()
             hash_table = pickle.load(file)
@@ -62,14 +51,17 @@ class BitcoinNode(Node):
                 for sub_key in sub_keys:
                     self.tx_out_hash_table[sub_key].update(hash_table[sub_key])
             end_time = time.time()
-            logger.info(f"Successfully loaded tx_out hash table", extra = logger_extra_data(pickle_path = pickle_path, duration = f"{end_time - start_time}"))
+            logger.info(f"Successfully loaded tx_out hash table",
+                        extra=logger_extra_data(pickle_path=pickle_path, duration=f"{end_time - start_time}"))
 
     def get_current_block_height(self):
         rpc_connection = AuthServiceProxy(self.node_rpc_url)
         try:
             return rpc_connection.getblockcount()
         except Exception as e:
-            logger.error(f"RPC Provider with Error", error = {'exception_type': e.__class__.__name__,'exception_message': str(e),'exception_args': e.args})
+            logger.error(f"RPC Provider with Error",
+                         error={'exception_type': e.__class__.__name__, 'exception_message': str(e),
+                                'exception_args': e.args})
         finally:
             rpc_connection._AuthServiceProxy__conn.close()  # Close the connection
 
@@ -79,14 +71,12 @@ class BitcoinNode(Node):
             block_hash = rpc_connection.getblockhash(block_height)
             return rpc_connection.getblock(block_hash, 2)
         except Exception as e:
-            logger.error(f"RPC Provider with Error", error = {'exception_type': e.__class__.__name__,'exception_message': str(e),'exception_args': e.args})
+            logger.error(f"RPC Provider with Error",
+                         error={'exception_type': e.__class__.__name__, 'exception_message': str(e),
+                                'exception_args': e.args})
         finally:
             rpc_connection._AuthServiceProxy__conn.close()  # Close the connection
 
-    def get_transaction_by_hash(self, tx_hash):
-        logger.error(f"get_transaction_by_hash not implemented for BitcoinNode")
-        raise NotImplementedError()
-    
     def get_address_and_amount_by_txn_id_and_vout_id(self, txn_id: str, vout_id: str):
         # call rpc if not in hash table
         if (txn_id, vout_id) not in self.tx_out_hash_table[txn_id[:3]]:
@@ -119,78 +109,9 @@ class BitcoinNode(Node):
                 return address, 0
             finally:
                 rpc_connection._AuthServiceProxy__conn.close()  # Close the connection
-        else: # get from hash table if exists
+        else:  # get from hash table if exists
             address, amount = self.tx_out_hash_table[txn_id[:3]][(txn_id, vout_id)]
             return address, int(amount)
-
-    def create_challenge(self, start_block_height, last_block_height):
-        num_retries = 10 # to prevent infinite loop
-        is_valid_block = False
-        while num_retries and not is_valid_block:
-            block_to_check = random.randint(start_block_height, last_block_height)
-            is_valid_block = check_if_block_is_valid_for_challenge(block_to_check)
-            num_retries -= 1
-
-        # if failed ot find valid block, return invalid response
-        if not num_retries:
-            raise Exception(
-                f"Failed to create a valid challenge."
-            )
-        
-        block_data = self.get_block_by_height(block_to_check)
-        num_transactions = len(block_data["tx"])
-
-        out_total_amount = 0
-        while out_total_amount == 0:
-            selected_txn = block_data["tx"][random.randint(0, num_transactions - 1)]
-            txn_id = selected_txn.get('txid')
-        
-            txn_data = self.get_txn_data_by_id(txn_id)
-            tx = self.create_in_memory_txn(txn_data)
-
-            *_, in_total_amount, out_total_amount = self.process_in_memory_txn_for_indexing(tx)
-            
-        challenge = Challenge(model_type=MODEL_TYPE_FUNDS_FLOW, in_total_amount=in_total_amount, out_total_amount=out_total_amount, tx_id_last_4_chars=txn_id[-4:])
-        return challenge, txn_id
-
-    def validate_challenge_response_output(self, challenge: Challenge, response_output):
-        if response_output[-4:] != challenge.tx_id_last_4_chars:
-            return False
-        
-        txn_data = self.get_txn_data_by_id(response_output)
-        if txn_data is None:
-            return False
-        
-        tx = self.create_in_memory_txn(txn_data)
-
-        *_, in_total_amount, out_total_amount = self.process_in_memory_txn_for_indexing(tx)
-        return challenge.in_total_amount == in_total_amount and challenge.out_total_amount == out_total_amount
-    
-    def create_balance_challenge(self, block_height):
-        block = self.get_block_by_height(block_height)
-        block_data = parse_block_data(block)
-        transactions = block_data.transactions
-        
-        balance_changes_by_address = {}
-        changed_addresses = []
-        
-        for tx in transactions:
-            in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = self.process_in_memory_txn_for_indexing(tx)
-            
-            for address in input_addresses:
-                if not address in balance_changes_by_address:
-                    balance_changes_by_address[address] = 0
-                    changed_addresses.append(address)
-                balance_changes_by_address[address] -= in_amount_by_address[address]
-            
-            for address in output_addresses:
-                if not address in balance_changes_by_address:
-                    balance_changes_by_address[address] = 0
-                    changed_addresses.append(address)
-                balance_changes_by_address[address] += out_amount_by_address[address]
-                
-        challenge = Challenge(model_type=MODEL_TYPE_BALANCE_TRACKING, block_height=block_height)
-        return challenge, len(changed_addresses)
 
     def get_txn_data_by_id(self, txn_id: str):
         try:
@@ -218,7 +139,7 @@ class BitcoinNode(Node):
             )
             tx.vins.append(vin)
             tx.is_coinbase = "coinbase" in vin_data
-            
+
         for vout_data in tx_data["vout"]:
             script_type = vout_data["scriptPubKey"].get("type", "")
             if "nonstandard" in script_type or script_type == "nulldata":
@@ -255,12 +176,12 @@ class BitcoinNode(Node):
                 address=address,
             )
             tx.vouts.append(vout)
-            
+
         return tx
-    
+
     def process_in_memory_txn_for_indexing(self, tx):
-        input_amounts = {} # input amounts by address in satoshi
-        output_amounts = {} # output amounts by address in satoshi
+        input_amounts = {}  # input amounts by address in satoshi
+        output_amounts = {}  # output amounts by address in satoshi
 
         for vin in tx.vins:
             if vin.tx_id == 0:
@@ -288,7 +209,7 @@ class BitcoinNode(Node):
 
         input_addresses = [address for address, amount in input_amounts.items() if amount != 0]
         output_addresses = [address for address, amount in output_amounts.items() if amount != 0]
-                    
+
         in_total_amount = sum(input_amounts.values())
         out_total_amount = sum(output_amounts.values())
 

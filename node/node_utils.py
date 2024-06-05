@@ -57,11 +57,6 @@ def initialize_tx_out_hash_table():
     return hash_table
 
 
-def check_if_block_is_valid_for_challenge(block_height: int) -> bool:
-    blocks_to_avoid = [91722, 91880]
-    return not block_height in blocks_to_avoid
-
-
 @dataclass
 class Block:
     block_height: int

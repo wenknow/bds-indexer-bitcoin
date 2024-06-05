@@ -38,20 +38,6 @@ class GraphIndexer:
     def close(self):
         self.driver.close()
 
-    def get_latest_block_number(self):
-        with self.driver.session() as session:
-            result = session.run(
-                """
-                MATCH (t:Transaction)
-                RETURN MAX(t.block_height) AS latest_block_height
-                """
-            )
-            single_result = result.single()
-            if single_result[0] is None:
-               return 0
-
-            return single_result[0]
-        
     def set_min_max_block_height_cache(self, min_block_height, max_block_height):
         with self.driver.session() as session:
             # update min block height
@@ -120,20 +106,6 @@ class GraphIndexer:
             gap_ranges.append((current_start, current_end))
 
             return gap_ranges
-
-    def get_min_block_number(self):
-        with self.driver.session() as session:
-            result = session.run(
-                """
-                MATCH (t:Transaction)
-                RETURN MIN(t.block_height) AS min_block_height
-                """
-            )
-            single_result = result.single()
-            if single_result[0] is None:
-               return 0
-
-            return single_result[0]
 
     from decimal import getcontext
 

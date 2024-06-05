@@ -1,9 +1,6 @@
 import os
-import typing
 from neo4j import GraphDatabase
 
-from funds_flow.query_builder import QueryBuilder
-from protocols.llm_engine import Query, QueryOutput
 
 class GraphSearch:
     def __init__(
@@ -36,59 +33,7 @@ class GraphSearch:
 
     def close(self):
         self.driver.close()
-        
-    def execute_query(self, query: Query) -> QueryOutput:
-        # build cypher query
-        cypher_query = QueryBuilder.build_query(query)
-        # execute cypher query
-        result = self.execute_cypher_query(cypher_query)
-        return result
-    
-    def execute_cypher_query(self, cypher_query: str):
-        with self.driver.session() as session:
-            result = session.run(cypher_query)
-            if not result:
-                return None
-            return result.data()
-          
-    def execute_benchmark_query(self, cypher_query: str):
-        with self.driver.session() as session:
-            result = session.run(cypher_query)
-            return result.single()
 
-    def get_block_range(self):
-        with self.driver.session() as session:
-            result = session.run(
-                """
-                MATCH (t:Transaction)
-                RETURN MAX(t.block_height) AS latest_block_height, MIN(t.block_height) AS start_block_height
-                """
-            )
-            single_result = result.single()
-            if single_result[0] is None:
-                return {
-                    'latest_block_height': 0,
-                    'start_block_height':0
-                }
-
-            return {
-                'latest_block_height': single_result[0],
-                'start_block_height': single_result[1]
-            }
-
-    def get_latest_block_number(self):
-        with self.driver.session() as session:
-            result = session.run(
-                """
-                MATCH (t:Transaction)
-                RETURN MAX(t.block_height) AS latest_block_height
-                """
-            )
-            single_result = result.single()
-            if single_result[0] is None:
-                return 0
-            return single_result[0]
-        
     def get_min_max_block_height(self):
         with self.driver.session() as session:
             result = session.run(

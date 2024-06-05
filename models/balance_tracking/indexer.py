@@ -1,16 +1,16 @@
 import time
 import signal
+from node.node import BitcoinNode
 from setup_logger import setup_logger
 from setup_logger import logger_extra_data
-from factory import NodeFactory
 from node.node_utils import parse_block_data
 from models.balance_tracking.balance_indexer import BalanceIndexer
-from protocols.blockchain import NETWORK_BITCOIN
 
 
 # Global flag to signal shutdown
 shutdown_flag = False
 logger = setup_logger("Indexer")
+
 
 def shutdown_handler(signum, frame):
     global shutdown_flag
@@ -18,6 +18,7 @@ def shutdown_handler(signum, frame):
         "Shutdown signal received. Waiting for current indexing to complete before shutting down."
     )
     shutdown_flag = True
+
 
 def index_block(_bitcoin_node, _balance_indexer, block_height):
     block = _bitcoin_node.get_block_by_height(block_height)
@@ -84,14 +85,14 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
 
-    bitcoin_node = NodeFactory.create_node(NETWORK_BITCOIN)
+    bitcoin_node = BitcoinNode()
     balance_indexer = BalanceIndexer()
     balance_indexer.setup_db()
     logger.info("Starting indexer")
 
     logger.info("Getting latest block number...")
-    latest_block_height = balance_indexer.get_latest_block_number()
-    logger.info(f"Latest block number", extra = logger_extra_data(latest_block_height = latest_block_height))
+    latest_block_height = balance_indexer.get_latest_block_number() #TODO: why we get last block from memgrapg??
+    logger.info(f"Latest block number", extra=logger_extra_data(latest_block_height = latest_block_height))
     
     move_forward(bitcoin_node, balance_indexer, latest_block_height + 1)
 
