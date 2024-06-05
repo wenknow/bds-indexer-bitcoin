@@ -1,6 +1,4 @@
-import os
-
-from funds_flow.graph_indexer import GraphIndexer
+from models.funds_flow.graph_indexer import GraphIndexer
 
 
 if __name__ == '__main__':

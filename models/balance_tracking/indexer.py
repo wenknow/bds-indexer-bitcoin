@@ -1,13 +1,11 @@
-import os
 import time
 import signal
 from setup_logger import setup_logger
 from setup_logger import logger_extra_data
 from factory import NodeFactory
-from node_utils import parse_block_data
-from balance_tracking.balance_indexer import BalanceIndexer
-
-from protocol import NETWORK_BITCOIN
+from node.node_utils import parse_block_data
+from models.balance_tracking.balance_indexer import BalanceIndexer
+from protocols.blockchain import NETWORK_BITCOIN
 
 
 # Global flag to signal shutdown
@@ -88,7 +86,7 @@ if __name__ == "__main__":
 
     bitcoin_node = NodeFactory.create_node(NETWORK_BITCOIN)
     balance_indexer = BalanceIndexer()
-    
+    balance_indexer.setup_db()
     logger.info("Starting indexer")
 
     logger.info("Getting latest block number...")

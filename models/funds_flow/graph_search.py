@@ -1,9 +1,5 @@
 import os
-import typing
 from neo4j import GraphDatabase
-
-from insights import protocol
-from funds_flow.query_builder import QueryBuilder
 
 
 class GraphSearch:
@@ -37,43 +33,6 @@ class GraphSearch:
 
     def close(self):
         self.driver.close()
-        
-    def execute_query(self, query: protocol.Query) -> protocol.QueryOutput:
-        # build cypher query
-        cypher_query = QueryBuilder.build_query(query)
-        # execute cypher query
-        result = self.execute_cypher_query(cypher_query)
-        return result
-    
-    def execute_cypher_query(self, cypher_query: str):
-        with self.driver.session() as session:
-            result = session.run(cypher_query)
-            if not result:
-                return None
-            return result.data()
-          
-    def execute_benchmark_query(self, cypher_query: str):
-        with self.driver.session() as session:
-            result = session.run(cypher_query)
-            return result.single()
-
-    def get_block_transactions(self, block_heights: typing.List[int]):
-        with self.driver.session() as session:
-            query = """
-                UNWIND $block_heights AS block_height
-                MATCH (t:Transaction { block_height: block_height })
-                RETURN block_height, COUNT(t) AS transaction_count
-            """
-            data_set = session.run(query, block_heights=block_heights)
-
-            results = []
-            for record in data_set:
-                results.append({
-                    "block_height": record["block_height"],
-                    "transaction_count": record["transaction_count"]
-                })
-
-            return results
 
     def get_block_range(self):
         with self.driver.session() as session:
@@ -143,22 +102,3 @@ class GraphSearch:
             max_block_height = result_max[0] if result_max else 0
 
             return min_block_height, max_block_height
-        
-
-    def solve_challenge(self, in_total_amount: int, out_total_amount: int, tx_id_last_4_chars: str) -> str:
-        with self.driver.session() as session:
-            result = session.run(
-                """
-                MATCH (t:Transaction {out_total_amount: $out_total_amount})
-                WHERE t.in_total_amount = $in_total_amount AND t.tx_id ENDS WITH $tx_id_last_4_chars
-                RETURN t.tx_id
-                LIMIT 1;
-                """,
-                in_total_amount=in_total_amount,
-                out_total_amount=out_total_amount,
-                tx_id_last_4_chars=tx_id_last_4_chars
-            )
-            single_result = result.single()
-            if single_result is None or single_result[0] is None:
-                return None
-            return single_result[0]

@@ -43,6 +43,32 @@ class BalanceIndexer:
     def close(self):
         self.engine.dispose()
 
+    def setup_db(self):
+        with self.engine.connect() as conn:
+            # Check if TimescaleDB extension is already installed
+            result = conn.execute("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb';")
+            if not result.fetchone():
+                conn.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;")
+
+            # Check if balance_changes table exists
+            result = conn.execute("SELECT 1 FROM pg_class WHERE relname = 'balance_changes';")
+            if result.fetchone():
+                # Check if balance_changes is already a hypertable
+                result = conn.execute(
+                    "SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'balance_changes';")
+                if not result.fetchone():
+                    # Create hypertable with chunking based on an approximate quarterly interval of blocks
+                    conn.execute(
+                        "SELECT create_hypertable('balance_changes', 'block', chunk_time_interval => interval '3 months');")
+
+            # Create indexes if they do not exist
+            conn.execute(
+                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_balance') THEN CREATE INDEX idx_balance ON current_balances (balance); END IF; END $$;")
+            conn.execute(
+                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_timestamp') THEN CREATE INDEX idx_timestamp ON blocks (timestamp); END IF; END $$;")
+            conn.execute(
+                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_block_timestamp') THEN CREATE INDEX idx_block_timestamp ON balance_changes (block_timestamp); END IF; END $$;")
+
     def get_latest_block_number(self):
         with self.Session() as session:
             try:

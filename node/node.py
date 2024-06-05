@@ -27,7 +27,8 @@ import random
 parser = argparse.ArgumentParser()
 bt.logging.add_args(parser)
 logger = setup_logger("BitcoinNode")
- 
+
+
 class BitcoinNode(Node):
     def __init__(self, node_rpc_url: str = None):
         self.tx_out_hash_table = initialize_tx_out_hash_table()
@@ -70,7 +71,6 @@ class BitcoinNode(Node):
             logger.error(f"RPC Provider with Error", error = {'exception_type': e.__class__.__name__,'exception_message': str(e),'exception_args': e.args})
         finally:
             rpc_connection._AuthServiceProxy__conn.close()  # Close the connection
-     
 
     def get_block_by_height(self, block_height):
         rpc_connection = AuthServiceProxy(self.node_rpc_url)
@@ -198,14 +198,15 @@ class BitcoinNode(Node):
         except Exception as e:
             return None
 
-    def create_in_memory_txn(self, tx_data):
+    @staticmethod
+    def create_in_memory_txn(tx_data):
         tx = Transaction(
             tx_id=tx_data.get('txid'),
             block_height=0,
             timestamp=0,
             fee_satoshi=0
         )
-        
+
         for vin_data in tx_data["vin"]:
             vin = VIN(
                 tx_id=vin_data.get("txid", 0),
@@ -270,7 +271,6 @@ class BitcoinNode(Node):
             amount = vout.value_satoshi
             address = vout.address or f"unknown-{tx.tx_id}"
             output_amounts[address] = output_amounts.get(address, 0) + amount
-
 
         for address in input_amounts:
             if address in output_amounts:

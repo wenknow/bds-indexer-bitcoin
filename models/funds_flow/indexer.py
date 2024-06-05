@@ -3,11 +3,10 @@ import signal
 import time
 from setup_logger import setup_logger
 from setup_logger import logger_extra_data
-from setup_logger import logger_extra_data
 from factory import NodeFactory
-from node_utils import parse_block_data
-from funds_flow.graph_indexer import GraphIndexer
-from funds_flow.graph_search import GraphSearch
+from node.node_utils import parse_block_data
+from models.funds_flow.graph_indexer import GraphIndexer
+from models.funds_flow.graph_search import GraphSearch
 
 from protocol import NETWORK_BITCOIN
 

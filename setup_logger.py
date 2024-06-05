@@ -2,6 +2,7 @@ import logging
 import json
 import time
 
+
 class CustomFormatter(logging.Formatter):
     def format(self, record):
         ct = self.converter(record.created)
@@ -13,8 +14,10 @@ class CustomFormatter(logging.Formatter):
             'level' : record.levelname,
             'message' : record.msg
         }
-        if(record.__dict__.get('extra_content')): config.update(record.__dict__["extra_content"])
+        if record.__dict__.get('extra_content'):
+            config.update(record.__dict__["extra_content"])
         return json.dumps(config)
+
 
 def setup_logger(name):
     formatter = CustomFormatter()
@@ -24,6 +27,8 @@ def setup_logger(name):
     logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
     return logger
+
+
 def logger_extra_data(**kwargs):
     extra = {}
     for key in kwargs:

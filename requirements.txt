@@ -3,3 +3,6 @@ pydantic
 python-bitcoinrpc
 python-dotenv
 neo4j
+bitcoin
+base58
+blockchain-data-subnet-shared-libs==0.0.3

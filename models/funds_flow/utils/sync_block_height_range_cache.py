@@ -1,7 +1,5 @@
-import os
-
-from funds_flow.graph_indexer import GraphIndexer
-from funds_flow.graph_search import GraphSearch
+from models.funds_flow.graph_indexer import GraphIndexer
+from models.funds_flow.graph_search import GraphSearch
 
 
 if __name__ == '__main__':
