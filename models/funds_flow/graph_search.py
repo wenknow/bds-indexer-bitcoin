@@ -1,6 +1,9 @@
 import os
+import typing
 from neo4j import GraphDatabase
 
+from funds_flow.query_builder import QueryBuilder
+from protocols.llm_engine import Query, QueryOutput
 
 class GraphSearch:
     def __init__(
@@ -33,6 +36,25 @@ class GraphSearch:
 
     def close(self):
         self.driver.close()
+        
+    def execute_query(self, query: Query) -> QueryOutput:
+        # build cypher query
+        cypher_query = QueryBuilder.build_query(query)
+        # execute cypher query
+        result = self.execute_cypher_query(cypher_query)
+        return result
+    
+    def execute_cypher_query(self, cypher_query: str):
+        with self.driver.session() as session:
+            result = session.run(cypher_query)
+            if not result:
+                return None
+            return result.data()
+          
+    def execute_benchmark_query(self, cypher_query: str):
+        with self.driver.session() as session:
+            result = session.run(cypher_query)
+            return result.single()
 
     def get_block_range(self):
         with self.driver.session() as session:
