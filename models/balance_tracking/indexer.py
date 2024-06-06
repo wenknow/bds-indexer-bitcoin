@@ -91,7 +91,7 @@ if __name__ == "__main__":
     logger.info("Starting indexer")
 
     logger.info("Getting latest block number...")
-    latest_block_height = balance_indexer.get_latest_block_number() #TODO: why we get last block from memgrapg??
+    latest_block_height = balance_indexer.get_latest_block_number()
     logger.info(f"Latest block number", extra=logger_extra_data(latest_block_height = latest_block_height))
     
     move_forward(bitcoin_node, balance_indexer, latest_block_height + 1)

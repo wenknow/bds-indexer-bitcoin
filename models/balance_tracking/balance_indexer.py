@@ -45,23 +45,44 @@ class BalanceIndexer:
     def close(self):
         self.engine.dispose()
 
+    def _ensure_hypertable_exists(self):
+        with self.engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'balance_changes';"
+            )).fetchone()
+            if not result:
+                conn.execute(text(
+                    "SELECT create_hypertable('balance_changes', 'block', chunk_time_interval => 12960, migrate_data => true);"
+                ))
+
     def setup_db(self):
         with self.engine.connect() as conn:
-            # Check if TimescaleDB extension is already installed
-            result = conn.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb';"))
-            if not result.fetchone():
-                conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"))
-
-            # Check if balance_changes table exists
-            result = conn.execute(text("SELECT 1 FROM pg_class WHERE relname = 'balance_changes';"))
-            if result.fetchone():
-                # Check if balance_changes is already a hypertable
-                result = conn.execute(text(
-                    "SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'balance_changes';"))
+            try:
+                # Check if TimescaleDB extension is already installed
+                result = conn.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb';"))
                 if not result.fetchone():
-                    # Create hypertable with chunking based on an approximate quarterly interval of blocks
+                    conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"))
+                    logger.info("TimescaleDB extension created successfully.")
+                else:
+                    logger.info("TimescaleDB extension already exists.")
+
+                # Check if hypertable is enabled
+                result = conn.execute(text(
+                    "SELECT * FROM timescaledb_information.hypertables WHERE hypertable_name = 'balance_changes';"
+                )).fetchone()
+
+                if not result:
                     conn.execute(text(
-                        "SELECT create_hypertable('balance_changes', 'block', chunk_time_interval => 12960, migrate_data => true);"))
+                        "SELECT create_hypertable('balance_changes', 'block', chunk_time_interval => 12960, migrate_data => true);"
+                    ))
+                    logger.info("Hypertable 'balance_changes' created successfully.")
+                else:
+                    logger.info("Hypertable 'balance_changes' already exists.")
+            except SQLAlchemyError as e:
+                logger.error(f"An error occurred: {e}")
+
+
+
 
             # Create indexes if they do not exist
             conn.execute(text(
