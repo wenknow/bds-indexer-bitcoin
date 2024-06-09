@@ -9,3 +9,4 @@ pycryptodome
 blockchain-data-subnet-shared-libs==0.0.12
 loguru
 psycopg2-binary
+pymgclient
