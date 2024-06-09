@@ -18,18 +18,6 @@ class BalanceChange(Base):
     )
 
 
-class CurrentBalance(Base):
-    __tablename__   = 'current_balances'
-    
-    address     = Column(String, primary_key=True)
-    balance     = Column(BigInteger)
-    
-    __table_args__ = (
-        PrimaryKeyConstraint('address'),
-        Index('idx_balance', 'balance')
-    )
-
-
 class Block(Base):
     __tablename__   = 'blocks'
     

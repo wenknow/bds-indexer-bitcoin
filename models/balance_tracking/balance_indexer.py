@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import select
 
-from .balance_model import Base, BalanceChange, CurrentBalance, Block
+from .balance_model import Base, BalanceChange, Block
 
 logger = setup_logger("BalanceIndexer")
 
@@ -33,11 +33,10 @@ class BalanceIndexer:
         inspector = inspect(self.engine)
 
         # Check if the table already exists
-        if (not inspector.has_table('balance_changes')) or (not inspector.has_table('current_balances')) or (
-        not inspector.has_table('blocks')):
+        if (not inspector.has_table('balance_changes')) or (not inspector.has_table('blocks')):
             # Create the table in the database
             Base.metadata.create_all(self.engine)
-            logger.info("Created 3 tables: `balance_changes`, `current_balances`, `blocks`")
+            logger.info("Created 3 tables: `balance_changes`, `blocks`")
 
         # Close the connection
         connection.close()
@@ -81,12 +80,7 @@ class BalanceIndexer:
             except SQLAlchemyError as e:
                 logger.error(f"An error occurred: {e}")
 
-
-
-
             # Create indexes if they do not exist
-            conn.execute(text(
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_balance') THEN CREATE INDEX idx_balance ON current_balances (balance); END IF; END $$;"))
             conn.execute(text(
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_timestamp') THEN CREATE INDEX idx_timestamp ON blocks (timestamp); END IF; END $$;"))
             conn.execute(text(
@@ -139,23 +133,6 @@ class BalanceIndexer:
             try:
                 # Add the new rows to the balance_changes table
                 session.add_all(new_rows)
-
-                # Update or add rows to the current_balance table
-                stmt = insert(CurrentBalance).values([
-                    {
-                        "address": change.address,
-                        "balance": change.d_balance,
-                    } for change in new_rows])
-
-                do_update_stmt = stmt.on_conflict_do_update(
-                    index_elements=["address"],
-                    set_={'balance': stmt.excluded.balance + CurrentBalance.balance}
-                )
-
-                session.execute(do_update_stmt)
-
-                # Remove zero balances
-                session.query(CurrentBalance).filter(CurrentBalance.balance == 0).delete()
 
                 # Add new row to blocks table
                 session.add(Block(block_height=block_height, timestamp=block_timestamp))
