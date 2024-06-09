@@ -8,7 +8,7 @@ from .node_utils import (
     construct_redeem_script,
     hash_redeem_script,
     create_p2sh_address,
-    Transaction, SATOSHI, VOUT
+    Transaction, SATOSHI, VOUT, VIN
 )
 from setup_logger import logger_extra_data
 
