@@ -1,5 +1,5 @@
-# Use the official Python 3.10 image
-FROM python:3.10
+# Use the official Python 3.11 image
+FROM python:3.11
 
 # Set the working directory
 WORKDIR /blockchain-data-subnet-indexer-bitcoin
