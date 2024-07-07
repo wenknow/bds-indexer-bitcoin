@@ -6,6 +6,8 @@ import concurrent.futures
 from threading import Lock
 from setup_logger import setup_logger
 from dotenv import load_dotenv
+import time
+
 
 load_dotenv()
 logger = setup_logger("Indexer")
