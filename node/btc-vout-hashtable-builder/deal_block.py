@@ -4,18 +4,10 @@ from utils import save_hash_table
 import concurrent.futures
 from threading import Lock
 from setup_logger import setup_logger
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = setup_logger("Indexer")
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description='Construct a hash table from vout csv data.')
-
-    parser.add_argument('--start', type=str, help='Path to the CSV file')
-    parser.add_argument('--end', type=str, help='Path to the target pickle file')
-    args = parser.parse_args()
-
-    return args.start, args.end
 
 
 def deal_one_block_multithreaded(_bitcoin_node, block_data, lock):
@@ -48,10 +40,8 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data, lock):
 
 
 def main():
-    start_block, end_block = parse_args()
-    if not start_block or not end_block:
-        logger.error("Provide start_block end_block and target_path parameter.")
-        exit()
+    start_block = os.getenv('DEAL_START', '1')
+    end_block = os.getenv('DEAL_END', '10000')
 
     deal_table = {}
     target_path = f"/deal_block/{start_block}-{end_block}.pkl"
