@@ -11,10 +11,21 @@ load_dotenv()
 logger = setup_logger("Indexer")
 
 
+def get_block_with_retry(bitcoin_node, block_height, retries=10, delay=1):
+    for attempt in range(retries):
+        try:
+            return bitcoin_node.get_block_by_height(block_height)
+        except Exception as e:
+            logger.error(f"Error getting block {block_height}, attempt {attempt + 1}/{retries}: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                raise
+
+
 def deal_one_block_multithreaded(_bitcoin_node, block_data, lock):
     block_table = {}
     transactions = block_data.transactions
-    logger.info(f"start deal block: {block_data.block_height}")
 
     def process_transaction(tx):
         nonlocal block_table
@@ -30,13 +41,14 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data, lock):
             }
 
     # 设置内层线程池的大小，根据具体情况调整，避免过度使用CPU资源
-    num_inner_threads = 32  # 假设一个区块内最多32个交易并行处理
+    num_inner_threads = 64  # 假设一个区块内最多32个交易并行处理
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_inner_threads) as executor:
         futures = {executor.submit(process_transaction, tx) for tx in transactions}
         for future in concurrent.futures.as_completed(futures):
             pass
 
-    logger.info(f"success deal block: {block_data.block_height}")
+    if block_data.block_height % 100 == 0:
+        logger.info(f"success deal block: {block_data.block_height}")
     return block_table
 
 
@@ -56,7 +68,10 @@ def main():
     num_outer_threads = 16  # 假设最多同时处理16个区块
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_outer_threads) as executor:
         future_to_block = {
-            executor.submit(lambda block_height: (block_height, deal_one_block_multithreaded(bitcoin_node, parse_block_data(bitcoin_node.get_block_by_height(block_height)), lock)), block_height): block_height
+            executor.submit(lambda block_height: (
+                block_height,
+                deal_one_block_multithreaded(bitcoin_node, parse_block_data(get_block_with_retry(bitcoin_node, block_height)), lock)
+            ), block_height): block_height
             for block_height in range(start_block, end_block + 1)
         }
 
