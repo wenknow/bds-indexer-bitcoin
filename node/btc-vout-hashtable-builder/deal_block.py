@@ -49,11 +49,7 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data, lock):
     return block_table
 
 
-def main():
-    start_height_str = os.getenv('DEAL_START', '1')
-    end_height_str = os.getenv('DEAL_END', '10000')
-    start_block = int(start_height_str)
-    end_block = int(end_height_str)
+def deal(start_block, end_block):
 
     deal_table = {}
     target_path = f"/deal_block/{start_block}-{end_block}.pkl"
@@ -80,5 +76,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    start_height_str = os.getenv('DEAL_START', '1')
+    end_height_str = os.getenv('DEAL_END', '10000')
+    start_block = int(start_height_str)
+    end_block = int(end_height_str)
+
+    # 确保起始块在间隔范围内
+    current_block = start_block
+    while current_block <= end_block:
+        deal(current_block, min(current_block + interval - 1, end_block))  # 确保不超过end_block
+        current_block += 30000
 
