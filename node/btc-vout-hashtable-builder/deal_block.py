@@ -41,8 +41,10 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data, lock):
 
 
 def main():
-    start_block = os.getenv('DEAL_START', '1')
-    end_block = os.getenv('DEAL_END', '10000')
+    start_height_str = os.getenv('DEAL_START', '1')
+    end_height_str = os.getenv('DEAL_END', '10000')
+    start_block = int(start_height_str)
+    end_block = int(end_height_str)
 
     deal_table = {}
     target_path = f"/deal_block/{start_block}-{end_block}.pkl"
