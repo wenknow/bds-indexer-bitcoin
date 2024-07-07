@@ -4,7 +4,7 @@ from node.node_utils import parse_block_data
 from utils import save_hash_table
 from setup_logger import setup_logger
 from dotenv import load_dotenv
-from multiprocessing import Pool
+import concurrent.futures
 import time
 
 
@@ -46,18 +46,18 @@ def process_block(_bitcoin_node, block_height):
 
 
 def deal(bitcoin_node, start_block, end_block):
-
+    deal_table = {}
     target_path = f"/deal_block/{start_block}-{end_block}.pkl"
     logger.info(f"target_path: {target_path}")
 
-    with Pool(64) as p:
-        block_heights = range(start_block, end_block + 1)
-        # 使用map_async或starmap_async可以提高效率，尤其是当任务有不同参数时，但这里我们每个任务参数相同。
-        results = p.map(process_block, [(bitcoin_node, height) for height in block_heights])
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        results = [executor.submit(process_block, bitcoin_node, block_height) for block_height in range(start_block, end_block + 1)]
 
-    deal_table = {height: result for height, result in zip(block_heights, results)}
+        for future in concurrent.futures.as_completed(results):
+            block_height, result = future.result()
+            deal_table[block_height] = result
 
-    save_hash_table(deal_table, target_path)  # 假设save_hash_table是保存字典的函数
+    save_hash_table(deal_table, target_path)
 
 
 if __name__ == "__main__":
