@@ -1,3 +1,4 @@
+import os
 from node.node import BitcoinNode
 from node.node_utils import parse_block_data
 from utils import save_hash_table
