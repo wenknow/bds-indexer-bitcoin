@@ -26,7 +26,6 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data):
     block_table = {}
     transactions = block_data.transactions
     lock = Lock()  # 用于保护共享资源block_table的线程锁
-    logger.info(f"Processing block {block_data.block_height} with {len(transactions)} transactions")
 
     def process_transaction(tx):
         nonlocal block_table
@@ -41,7 +40,6 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data):
                     'in_total_amount': in_total_amount,
                     'out_total_amount': out_total_amount
                 }
-            logger.info(f"Processed {block_data.block_height} transaction {tx} with data {block_table[tx]}")
         except Exception as e:
             logger.error(f"Error processing {block_data.block_height} transaction {tx}: {e}")
 
@@ -79,7 +77,6 @@ def deal(bitcoin_node, start_block, end_block):
 
         for future in concurrent.futures.as_completed(future_to_block):
             block_height, block_table = future.result()
-            logger.info(f"Block {block_height} processed with table: {block_table}")
             deal_table[block_height] = block_table
 
     save_hash_table(deal_table, target_path)  # 假设save_hash_table是保存字典的函数
