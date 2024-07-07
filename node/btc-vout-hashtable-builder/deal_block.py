@@ -22,7 +22,7 @@ def get_block_with_retry(bitcoin_node, block_height, retries=30, delay=2):
         time.sleep(delay)
 
 
-def deal_one_block_multithreaded(_bitcoin_node, block_data):
+def deal_one_block(_bitcoin_node, block_data):
     block_table = {}
     transactions = block_data.transactions
     for tx in transactions:
@@ -35,7 +35,15 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data):
             'in_total_amount': in_total_amount,
             'out_total_amount': out_total_amount
         }
+    if block_data.block_height % 100 == 0:
+        logger.info(f"success deal block: {block_data.block_height}")
     return block_table
+
+
+def process_block(_bitcoin_node, block_height):
+    block = get_block_with_retry(_bitcoin_node, block_height)
+    block_data = parse_block_data(block)
+    return block_height, deal_one_block(_bitcoin_node, block_data)
 
 
 def deal(bitcoin_node, start_block, end_block):
@@ -45,16 +53,10 @@ def deal(bitcoin_node, start_block, end_block):
     logger.info(f"target_path: {target_path}")
 
     # 使用多进程池并行处理区块
-    num_outer_processes = 64  # 根据CPU核心数调整外层进程池大小
+    num_outer_processes = multiprocessing.cpu_count()  # 根据CPU核心数调整外层进程池大小
     with multiprocessing.Pool(num_outer_processes) as pool:
-        results = pool.starmap(
-            lambda block_height: (
-                block_height,
-                deal_one_block_multithreaded(bitcoin_node,
-                                             parse_block_data(get_block_with_retry(bitcoin_node, block_height)))
-            ),
-            [(block_height,) for block_height in range(start_block, end_block + 1)]
-        )
+        results = pool.starmap(process_block,
+                               [(bitcoin_node, block_height) for block_height in range(start_block, end_block + 1)])
         for block_height, block_table in results:
             deal_table[block_height] = block_table
 
