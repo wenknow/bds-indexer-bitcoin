@@ -13,7 +13,7 @@ load_dotenv()
 logger = setup_logger("Indexer")
 
 
-def get_block_with_retry(bitcoin_node, block_height, retries=10, delay=2):
+def get_block_with_retry(bitcoin_node, block_height, retries=30, delay=2):
     for attempt in range(retries):
         res = bitcoin_node.get_block_by_height(block_height)
         if res is not None:
@@ -26,26 +26,34 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data):
     block_table = {}
     transactions = block_data.transactions
     lock = Lock()  # 用于保护共享资源block_table的线程锁
+    logger.info(f"Processing block {block_data.block_height} with {len(transactions)} transactions")
 
     def process_transaction(tx):
         nonlocal block_table
-        in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = _bitcoin_node.process_in_memory_txn_for_indexing(tx)
-        with lock:
-            block_table[tx] = {
-                'in_amount_by_address': in_amount_by_address,
-                'out_amount_by_address': out_amount_by_address,
-                'input_addresses': input_addresses,
-                'output_addresses': output_addresses,
-                'in_total_amount': in_total_amount,
-                'out_total_amount': out_total_amount
-            }
+        try:
+            in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = _bitcoin_node.process_in_memory_txn_for_indexing(tx)
+            with lock:
+                block_table[tx] = {
+                    'in_amount_by_address': in_amount_by_address,
+                    'out_amount_by_address': out_amount_by_address,
+                    'input_addresses': input_addresses,
+                    'output_addresses': output_addresses,
+                    'in_total_amount': in_total_amount,
+                    'out_total_amount': out_total_amount
+                }
+            logger.info(f"Processed {block_data.block_height} transaction {tx} with data {block_table[tx]}")
+        except Exception as e:
+            logger.error(f"Error processing {block_data.block_height} transaction {tx}: {e}")
 
     # 设置内层线程池的大小，根据具体情况调整，避免过度使用CPU资源
     num_inner_threads = 64  # 假设一个区块内最多32个交易并行处理
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_inner_threads) as executor:
         futures = {executor.submit(process_transaction, tx) for tx in transactions}
         for future in concurrent.futures.as_completed(futures):
-            pass
+            try:
+                future.result()
+            except Exception as e:
+                logger.error(f"Exception in {block_data.block_height} transaction processing: {e}")
 
     if block_data.block_height % 100 == 0:
         logger.info(f"success deal block: {block_data.block_height}")
@@ -71,6 +79,7 @@ def deal(bitcoin_node, start_block, end_block):
 
         for future in concurrent.futures.as_completed(future_to_block):
             block_height, block_table = future.result()
+            logger.info(f"Block {block_height} processed with table: {block_table}")
             deal_table[block_height] = block_table
 
     save_hash_table(deal_table, target_path)  # 假设save_hash_table是保存字典的函数
