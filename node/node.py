@@ -40,7 +40,8 @@ class BitcoinNode(Node):
             self.node_rpc_url = node_rpc_url
 
     def load_tx_out_hash_table(self, pickle_path: str, reset: bool = False):
-        logger.info(f"Loading tx_out hash table", extra=logger_extra_data(pickle_path=pickle_path))
+        # logger.info(f"Loading tx_out hash table", extra=logger_extra_data(pickle_path=pickle_path))
+        logger.info(f"Loading tx_out hash table {pickle_path}")
         with open(pickle_path, 'rb') as file:
             start_time = time.time()
             hash_table = pickle.load(file)
@@ -51,8 +52,9 @@ class BitcoinNode(Node):
                 for sub_key in sub_keys:
                     self.tx_out_hash_table[sub_key].update(hash_table[sub_key])
             end_time = time.time()
-            logger.info(f"Successfully loaded tx_out hash table",
-                        extra=logger_extra_data(pickle_path=pickle_path, duration=f"{end_time - start_time}"))
+            logger.info(f"Successfully loaded tx_out hash table {pickle_path}, cost: {end_time - start_time}")
+            # logger.info(f"Successfully loaded tx_out hash table",
+            #             extra=logger_extra_data(pickle_path=pickle_path, duration=f"{end_time - start_time}"))
 
     def get_current_block_height(self):
         rpc_connection = AuthServiceProxy(self.node_rpc_url)
@@ -80,7 +82,7 @@ class BitcoinNode(Node):
     def get_address_and_amount_by_txn_id_and_vout_id(self, txn_id: str, vout_id: str):
         # call rpc if not in hash table
         if (txn_id, vout_id) not in self.tx_out_hash_table[txn_id[:3]]:
-            # logger.info(f"No entry is found in tx_out hash table: (tx_id, vout_id): ({txn_id}, {vout_id})")
+            logger.info(f"No entry is found in tx_out hash table: (tx_id, vout_id): ({txn_id}, {vout_id})")
             rpc_connection = AuthServiceProxy(self.node_rpc_url)
             try:
                 txn_data = rpc_connection.getrawtransaction(str(txn_id), 1)

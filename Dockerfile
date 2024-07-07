@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install pymgclient directly via pip
 RUN pip install pymgclient
+RUN pip install sqlalchemy
 
 # Install the Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

@@ -142,7 +142,7 @@ class GraphIndexer:
                     except Exception as e:
                         logger.error(f"An exception occurred while creating index", extra = logger_extra_data(index_name = index_name, error = {'exception_type': e.__class__.__name__,'exception_message': str(e),'exception_args': e.args}))
 
-    def create_graph_focused_on_money_flow(self, block_data, _bitcoin_node, batch_size=8):
+    def create_graph_focused_on_money_flow(self, block_data, _bitcoin_node, batch_size=400):
         transactions = block_data.transactions
 
         with self.driver.session() as session:
