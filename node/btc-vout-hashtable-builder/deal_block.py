@@ -33,7 +33,7 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data):
         try:
             in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = _bitcoin_node.process_in_memory_txn_for_indexing(tx)
             with lock:
-                block_table[tx] = {
+                block_table[tx.tx_id] = {
                     'in_amount_by_address': in_amount_by_address,
                     'out_amount_by_address': out_amount_by_address,
                     'input_addresses': input_addresses,
