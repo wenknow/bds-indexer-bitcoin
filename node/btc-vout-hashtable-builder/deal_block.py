@@ -78,12 +78,14 @@ def deal(start_block, end_block):
 if __name__ == "__main__":
     start_height_str = os.getenv('DEAL_START', '1')
     end_height_str = os.getenv('DEAL_END', '10000')
-    start_block = int(start_height_str)
-    end_block = int(end_height_str)
+    start_height = int(start_height_str)
+    end_height = int(end_height_str)
+
+    interval = 30000
 
     # 确保起始块在间隔范围内
-    current_block = start_block
-    while current_block <= end_block:
-        deal(current_block, min(current_block + interval - 1, end_block))  # 确保不超过end_block
-        current_block += 30000
+    current_block = start_height
+    while current_block <= end_height:
+        deal(current_block, min(current_block + interval - 1, end_height))  # 确保不超过end_block
+        current_block += interval
 
