@@ -2,10 +2,9 @@ import os
 from node.node import BitcoinNode
 from node.node_utils import parse_block_data
 from utils import save_hash_table
-import multiprocessing
-from threading import Lock
 from setup_logger import setup_logger
 from dotenv import load_dotenv
+from multiprocessing import Pool
 import time
 
 
@@ -43,22 +42,20 @@ def deal_one_block(_bitcoin_node, block_data):
 def process_block(_bitcoin_node, block_height):
     block = get_block_with_retry(_bitcoin_node, block_height)
     block_data = parse_block_data(block)
-    return block_height, deal_one_block(_bitcoin_node, block_data)
+    return deal_one_block(_bitcoin_node, block_data)
 
 
 def deal(bitcoin_node, start_block, end_block):
 
-    deal_table = {}
     target_path = f"/deal_block/{start_block}-{end_block}.pkl"
     logger.info(f"target_path: {target_path}")
 
-    # 使用多进程池并行处理区块
-    num_outer_processes = multiprocessing.cpu_count()  # 根据CPU核心数调整外层进程池大小
-    with multiprocessing.Pool(num_outer_processes) as pool:
-        results = pool.starmap(process_block,
-                               [(bitcoin_node, block_height) for block_height in range(start_block, end_block + 1)])
-        for block_height, block_table in results:
-            deal_table[block_height] = block_table
+    with Pool(64) as p:
+        block_heights = range(start_block, end_block + 1)
+        # 使用map_async或starmap_async可以提高效率，尤其是当任务有不同参数时，但这里我们每个任务参数相同。
+        results = p.map(process_block, [(bitcoin_node, height) for height in block_heights])
+
+    deal_table = {height: result for height, result in zip(block_heights, results)}
 
     save_hash_table(deal_table, target_path)  # 假设save_hash_table是保存字典的函数
 
