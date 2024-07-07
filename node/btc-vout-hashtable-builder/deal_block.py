@@ -11,16 +11,13 @@ load_dotenv()
 logger = setup_logger("Indexer")
 
 
-def get_block_with_retry(bitcoin_node, block_height, retries=10, delay=1):
+def get_block_with_retry(bitcoin_node, block_height, retries=10, delay=2):
     for attempt in range(retries):
-        try:
-            return bitcoin_node.get_block_by_height(block_height)
-        except Exception as e:
-            logger.error(f"Error getting block {block_height}, attempt {attempt + 1}/{retries}: {e}")
-            if attempt < retries - 1:
-                time.sleep(delay)
-            else:
-                raise
+        res = bitcoin_node.get_block_by_height(block_height)
+        if res is not None:
+            return res
+        logger.error(f"Error getting block {block_height}, attempt {attempt + 1}/{retries}")
+        time.sleep(delay)
 
 
 def deal_one_block_multithreaded(_bitcoin_node, block_data, lock):
