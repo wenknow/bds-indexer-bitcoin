@@ -23,11 +23,16 @@ def shutdown_handler(signum, frame):
 
 
 def index_block(_bitcoin_node, _graph_indexer, _graph_search, block_height):
-    block = _bitcoin_node.get_block_by_height(block_height)
-    num_transactions = len(block["tx"])
+    # block = _bitcoin_node.get_block_by_height(block_height)
+    # num_transactions = len(block["tx"])
     start_time = time.time()
-    block_data = parse_block_data(block)
-    success = _graph_indexer.create_graph_focused_on_money_flow(block_data, _bitcoin_node)
+    # block_data = parse_block_data(block)
+    deal_data = _bitcoin_node.get_deal_data_by_block(block_height)
+    if deal_data is None:
+        return True
+
+    success = _graph_indexer.create_graph_focused_on_money_flow(deal_data)
+    num_transactions = len(deal_data)
     end_time = time.time()
     time_taken = end_time - start_time
     formatted_num_transactions = "{:>4}".format(num_transactions)

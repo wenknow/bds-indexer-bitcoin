@@ -142,71 +142,98 @@ class GraphIndexer:
                     except Exception as e:
                         logger.error(f"An exception occurred while creating index", extra = logger_extra_data(index_name = index_name, error = {'exception_type': e.__class__.__name__,'exception_message': str(e),'exception_args': e.args}))
 
-    def create_graph_focused_on_money_flow(self, block_data, _bitcoin_node, batch_size=400):
-        transactions = block_data.transactions
+    def create_graph_focused_on_money_flow(self, deal_data):
+        # transactions = block_data.transactions
+
+        batch_txns = []
+        batch_inputs = []
+        batch_outputs = []
+        for tx_id, value in deal_data.items():
+            in_amount_by_address = value['in_amount_by_address']
+            out_amount_by_address = value['out_amount_by_address']
+            input_addresses = value['input_addresses']
+            output_addresses = value['output_addresses']
+            in_total_amount = value['in_total_amount']
+            out_total_amount = value['out_total_amount']
+
+            inputs = [{"address": address, "amount": in_amount_by_address[address], "tx_id": tx_id} for address in
+                      input_addresses]
+            outputs = [{"address": address, "amount": out_amount_by_address[address], "tx_id": tx_id} for address in
+                       output_addresses]
+
+            batch_txns.append({
+                "tx_id": tx_id,
+                "in_total_amount": in_total_amount,
+                "out_total_amount": out_total_amount,
+                "timestamp": tx.timestamp,
+                "block_height": tx.block_height,
+                "is_coinbase": tx.is_coinbase,
+            })
+            batch_inputs += inputs
+            batch_outputs += outputs
 
         with self.driver.session() as session:
             # Start a transaction
             transaction = session.begin_transaction()
 
             try:
-                for i in range(0, len(transactions), batch_size):
-                    batch_transactions = transactions[i : i + batch_size]
+                # for i in range(0, len(transactions), batch_size):
+                #     batch_transactions = transactions[i : i + batch_size]
+                #
+                #     # Process all transactions, inputs, and outputs in the current batch
+                #     batch_txns = []
+                #     batch_inputs = []
+                #     batch_outputs = []
+                #     for tx in batch_transactions:
+                #         in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = _bitcoin_node.process_in_memory_txn_for_indexing(tx)
+                #
+                #         inputs = [{"address": address, "amount": in_amount_by_address[address], "tx_id": tx.tx_id } for address in input_addresses]
+                #         outputs = [{"address": address, "amount": out_amount_by_address[address], "tx_id": tx.tx_id } for address in output_addresses]
+                #
+                #         batch_txns.append({
+                #             "tx_id": tx.tx_id,
+                #             "in_total_amount": in_total_amount,
+                #             "out_total_amount": out_total_amount,
+                #             "timestamp": tx.timestamp,
+                #             "block_height": tx.block_height,
+                #             "is_coinbase": tx.is_coinbase,
+                #         })
+                #         batch_inputs += inputs
+                #         batch_outputs += outputs
 
-                    # Process all transactions, inputs, and outputs in the current batch
-                    batch_txns = []
-                    batch_inputs = []
-                    batch_outputs = []
-                    for tx in batch_transactions:
-                        in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = _bitcoin_node.process_in_memory_txn_for_indexing(tx)
-                        
-                        inputs = [{"address": address, "amount": in_amount_by_address[address], "tx_id": tx.tx_id } for address in input_addresses]
-                        outputs = [{"address": address, "amount": out_amount_by_address[address], "tx_id": tx.tx_id } for address in output_addresses]
+                transaction.run(
+                    """
+                    UNWIND $transactions AS tx
+                    MERGE (t:Transaction {tx_id: tx.tx_id})
+                    ON CREATE SET t.timestamp = tx.timestamp,
+                                t.in_total_amount = tx.in_total_amount,
+                                t.out_total_amount = tx.out_total_amount,
+                                t.timestamp = tx.timestamp,
+                                t.block_height = tx.block_height,
+                                t.is_coinbase = tx.is_coinbase
+                    """,
+                    transactions=batch_txns,
+                )
 
-                        batch_txns.append({
-                            "tx_id": tx.tx_id,
-                            "in_total_amount": in_total_amount,
-                            "out_total_amount": out_total_amount,
-                            "timestamp": tx.timestamp,
-                            "block_height": tx.block_height,
-                            "is_coinbase": tx.is_coinbase,
-                        })
-                        batch_inputs += inputs
-                        batch_outputs += outputs
+                transaction.run(
+                    """
+                    UNWIND $inputs AS input
+                    MERGE (a:Address {address: input.address})
+                    MERGE (t:Transaction {tx_id: input.tx_id})
+                    CREATE (a)-[:SENT { value_satoshi: input.amount }]->(t)
+                    """,
+                    inputs=batch_inputs
+                )
 
-                    transaction.run(
-                        """
-                        UNWIND $transactions AS tx
-                        MERGE (t:Transaction {tx_id: tx.tx_id})
-                        ON CREATE SET t.timestamp = tx.timestamp,
-                                    t.in_total_amount = tx.in_total_amount,
-                                    t.out_total_amount = tx.out_total_amount,
-                                    t.timestamp = tx.timestamp,
-                                    t.block_height = tx.block_height,
-                                    t.is_coinbase = tx.is_coinbase
-                        """,
-                        transactions=batch_txns,
-                    )
-                    
-                    transaction.run(
-                        """
-                        UNWIND $inputs AS input
-                        MERGE (a:Address {address: input.address})
-                        MERGE (t:Transaction {tx_id: input.tx_id})
-                        CREATE (a)-[:SENT { value_satoshi: input.amount }]->(t)
-                        """,
-                        inputs=batch_inputs
-                    )
-                    
-                    transaction.run(
-                        """
-                        UNWIND $outputs AS output
-                        MERGE (a:Address {address: output.address})
-                        MERGE (t:Transaction {tx_id: output.tx_id})
-                        CREATE (t)-[:SENT { value_satoshi: output.amount }]->(a)
-                        """,
-                        outputs=batch_outputs
-                    )
+                transaction.run(
+                    """
+                    UNWIND $outputs AS output
+                    MERGE (a:Address {address: output.address})
+                    MERGE (t:Transaction {tx_id: output.tx_id})
+                    CREATE (t)-[:SENT { value_satoshi: output.amount }]->(a)
+                    """,
+                    outputs=batch_outputs
+                )
 
                 transaction.commit()
                 return True
