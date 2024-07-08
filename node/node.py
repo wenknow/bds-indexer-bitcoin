@@ -46,7 +46,7 @@ class BitcoinNode(Node):
             start_time = time.time()
             hash_table = pickle.load(file)
             # if reset:
-            self.tx_deal_table = hash_table
+            self.tx_deal_table.update(hash_table)
             # else:
             #     sub_keys = get_tx_out_hash_table_sub_keys()
             #     for sub_key in sub_keys:

@@ -93,12 +93,12 @@ if __name__ == "__main__":
     start_height = int(start_height_str)
     end_height = int(end_height_str)
 
-    interval = 30000
+    interval = 10000
     bitcoin_node = BitcoinNode()
 
     # 确保起始块在间隔范围内
     current_block = start_height
     while current_block <= end_height:
-        deal(bitcoin_node, current_block, min(current_block + interval - 1, end_height))  # 确保不超过end_block
+        deal(bitcoin_node, current_block, min(current_block + interval, end_height))  # 确保不超过end_block
         current_block += interval
 
