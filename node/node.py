@@ -22,8 +22,19 @@ import os
 class BitcoinNode(Node):
     def __init__(self, node_rpc_url: str = None):
         self.tx_out_hash_table = initialize_tx_out_hash_table()
+        self.tx_deal_table = {}
         pickle_files_env = os.environ.get("BITCOIN_V2_TX_OUT_HASHMAP_PICKLES")
+        pickle_files_env2 = os.environ.get("BITCOIN_V2_TX_DEAL_PICKLES")
         pickle_files = []
+        pickle_files2 = []
+        if pickle_files_env2:
+            pickle_files_env = None
+            pickle_files2 = pickle_files_env2.split(',')
+
+        for pickle_file in pickle_files2:
+            if pickle_file:
+                self.load_tx_out_hash_table2(pickle_file)
+
         if pickle_files_env:
             pickle_files = pickle_files_env.split(',')
 
@@ -31,15 +42,6 @@ class BitcoinNode(Node):
             if pickle_file:
                 self.load_tx_out_hash_table(pickle_file)
 
-        self.tx_deal_table = {}
-        pickle_files_env2 = os.environ.get("BITCOIN_V2_TX_DEAL_PICKLES")
-        pickle_files2 = []
-        if pickle_files_env2:
-            pickle_files2 = pickle_files_env2.split(',')
-
-        for pickle_file in pickle_files2:
-            if pickle_file:
-                self.load_tx_out_hash_table2(pickle_file)
 
         if node_rpc_url is None:
             self.node_rpc_url = (
