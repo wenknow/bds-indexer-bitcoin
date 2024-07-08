@@ -49,7 +49,7 @@ def deal(bitcoin_node, start_block, end_block):
 
     deal_table = {}
     target_path = f"/deal_block/{start_block}-{end_block}.pkl"
-    logger.info(f"target_path: {target_path}")
+    logger.info(f"target_path2: {target_path}")
 
     with multiprocessing.Pool(64) as p:
         results = p.map(partial(deal_one_block, _bitcoin_node=bitcoin_node), [block_height for block_height in range(start_block, end_block + 1)])
