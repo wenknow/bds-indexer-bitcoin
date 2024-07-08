@@ -155,6 +155,7 @@ class GraphIndexer:
             output_addresses = value['output_addresses']
             in_total_amount = value['in_total_amount']
             out_total_amount = value['out_total_amount']
+            tx_info = value['tx_info']
 
             inputs = [{"address": address, "amount": in_amount_by_address[address], "tx_id": tx_id} for address in
                       input_addresses]
@@ -165,9 +166,9 @@ class GraphIndexer:
                 "tx_id": tx_id,
                 "in_total_amount": in_total_amount,
                 "out_total_amount": out_total_amount,
-                "timestamp": tx.timestamp,
-                "block_height": tx.block_height,
-                "is_coinbase": tx.is_coinbase,
+                "timestamp": tx_info.timestamp,
+                "block_height": tx_info.block_height,
+                "is_coinbase": tx_info.is_coinbase,
             })
             batch_inputs += inputs
             batch_outputs += outputs

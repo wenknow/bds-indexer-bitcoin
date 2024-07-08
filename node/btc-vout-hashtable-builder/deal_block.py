@@ -38,7 +38,12 @@ def deal_one_block_multithreaded(_bitcoin_node, block_data):
                     'input_addresses': input_addresses,
                     'output_addresses': output_addresses,
                     'in_total_amount': in_total_amount,
-                    'out_total_amount': out_total_amount
+                    'out_total_amount': out_total_amount,
+                    'tx_info': {
+                        "timestamp": tx.timestamp,
+                        "block_height": tx.block_height,
+                        "is_coinbase": tx.is_coinbase,
+                    }
                 }
         except Exception as e:
             logger.error(f"Error processing {block_data.block_height} transaction {tx}: {e}")
