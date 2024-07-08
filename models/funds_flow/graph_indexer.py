@@ -166,9 +166,9 @@ class GraphIndexer:
                 "tx_id": tx_id,
                 "in_total_amount": in_total_amount,
                 "out_total_amount": out_total_amount,
-                "timestamp": tx_info.timestamp,
-                "block_height": tx_info.block_height,
-                "is_coinbase": tx_info.is_coinbase,
+                "timestamp": tx_info['timestamp'],
+                "block_height": tx_info['block_height'],
+                "is_coinbase": tx_info['is_coinbase'],
             })
             batch_inputs += inputs
             batch_outputs += outputs
