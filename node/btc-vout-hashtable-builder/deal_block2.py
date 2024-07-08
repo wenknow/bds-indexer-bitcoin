@@ -20,8 +20,9 @@ def get_block_with_retry(bitcoin_node, block_height, retries=30, delay=2):
         time.sleep(delay)
 
 
-def deal_one_block(_bitcoin_node, block_data):
+def deal_one_block(_bitcoin_node, block_height):
     block_table = {}
+    block_data = get_block_with_retry(_bitcoin_node, block_height)
     transactions = block_data.transactions
 
     for tx in transactions:
