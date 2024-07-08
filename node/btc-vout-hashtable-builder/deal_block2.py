@@ -2,6 +2,7 @@ import os
 from node.node import BitcoinNode
 from utils import save_hash_table
 from setup_logger import setup_logger
+from node.node_utils import parse_block_data
 from dotenv import load_dotenv
 import time
 import multiprocessing
@@ -22,26 +23,31 @@ def get_block_with_retry(bitcoin_node, block_height, retries=30, delay=2):
 
 def deal_one_block(_bitcoin_node, block_height):
     block_table = {}
-    block_data = get_block_with_retry(_bitcoin_node, block_height)
-    transactions = block_data.transactions
+    try:
+        block = get_block_with_retry(_bitcoin_node, block_height)
+        block_data = parse_block_data(block)
+        transactions = block_data.transactions
 
-    for tx in transactions:
-        in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = _bitcoin_node.process_in_memory_txn_for_indexing(tx)
-        block_table[tx.tx_id] = {
-            'in_amount_by_address': in_amount_by_address,
-            'out_amount_by_address': out_amount_by_address,
-            'input_addresses': input_addresses,
-            'output_addresses': output_addresses,
-            'in_total_amount': in_total_amount,
-            'out_total_amount': out_total_amount,
-            'tx_info': {
-                "timestamp": tx.timestamp,
-                "block_height": tx.block_height,
-                "is_coinbase": tx.is_coinbase,
+        for tx in transactions:
+            in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, out_total_amount = _bitcoin_node.process_in_memory_txn_for_indexing(tx)
+            block_table[tx.tx_id] = {
+                'in_amount_by_address': in_amount_by_address,
+                'out_amount_by_address': out_amount_by_address,
+                'input_addresses': input_addresses,
+                'output_addresses': output_addresses,
+                'in_total_amount': in_total_amount,
+                'out_total_amount': out_total_amount,
+                'tx_info': {
+                    "timestamp": tx.timestamp,
+                    "block_height": tx.block_height,
+                    "is_coinbase": tx.is_coinbase,
+                }
             }
-        }
-    if block_data.block_height % 100 == 0:
-        logger.info(f"success deal block: {block_data.block_height}")
+        if block_height % 100 == 0:
+            logger.info(f"success deal block: {block_height}")
+    except Exception as e:
+        logger.error(f"Error deal_one_block2 {block_height} : {e}")
+
     return block_table
 
 
