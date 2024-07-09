@@ -21,11 +21,11 @@ def get_block_with_retry(bitcoin_node, block_height, retries=30, delay=2):
         time.sleep(delay)
 
 
-def deal_one_block(_bitcoin_node, block_height):
+def deal_one_block(bitcoin_node, block_height):
     block_table = {}
     logger.info(f"start deal block: {block_height}")
     try:
-        block = get_block_with_retry(_bitcoin_node, block_height)
+        block = get_block_with_retry(bitcoin_node, block_height)
         block_data = parse_block_data(block)
         transactions = block_data.transactions
 
@@ -49,7 +49,7 @@ def deal_one_block(_bitcoin_node, block_height):
     except Exception as e:
         logger.error(f"Error deal_one_block2 {block_height} : {e}")
 
-    return block_table
+    return block_height, block_table
 
 
 def deal(bitcoin_node, start_block, end_block):
@@ -58,12 +58,17 @@ def deal(bitcoin_node, start_block, end_block):
     target_path = f"/deal_block/{start_block}-{end_block}.pkl"
     logger.info(f"target_path2: {target_path}")
 
+    if os.path.exists(target_path):
+        logger.info(f"target_path2 already exist: {target_path}")
+        return
+
     with multiprocessing.Pool(64) as p:
-        results = p.map(partial(deal_one_block, _bitcoin_node=bitcoin_node), [block_height for block_height in range(start_block, end_block + 1)])
+        results = p.map(partial(deal_one_block, bitcoin_node), range(start_block, end_block + 1))
         for block_height, block_table in results:
             deal_table[block_height] = block_table
 
     save_hash_table(deal_table, target_path)  # 假设save_hash_table是保存字典的函数
+    logger.info(f"success save target_path2: {target_path}")
 
 
 if __name__ == "__main__":
