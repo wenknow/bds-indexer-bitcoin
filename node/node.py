@@ -75,7 +75,8 @@ class BitcoinNode(Node):
             hash_table = pickle.load(file)
             self.tx_deal_table.update(hash_table)
             end_time = time.time()
-            logger.info(f"Successfully loaded tx_out hash table2 {pickle_path}, cost: {end_time - start_time}")
+            deal_len = len(self.tx_deal_table)
+            logger.info(f"Successfully load2 {pickle_path}, now len {deal_len} cost: {end_time - start_time}")
 
     def get_current_block_height(self):
         rpc_connection = AuthServiceProxy(self.node_rpc_url)
