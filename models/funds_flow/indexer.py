@@ -29,7 +29,8 @@ def index_block(_bitcoin_node, _graph_indexer, _graph_search, block_height):
     # block_data = parse_block_data(block)
     deal_data = _bitcoin_node.get_deal_data_by_block(block_height)
     if deal_data is None:
-        return True
+        shutdown_handler(None, None)
+        return False
 
     success = _graph_indexer.create_graph_focused_on_money_flow(deal_data)
     num_transactions = len(deal_data)
