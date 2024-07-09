@@ -23,6 +23,7 @@ def get_block_with_retry(bitcoin_node, block_height, retries=30, delay=2):
 
 def deal_one_block(_bitcoin_node, block_height):
     block_table = {}
+    logger.info(f"start deal block: {block_height}")
     try:
         block = get_block_with_retry(_bitcoin_node, block_height)
         block_data = parse_block_data(block)
