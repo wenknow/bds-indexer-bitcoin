@@ -25,7 +25,8 @@ def index_block(_bitcoin_node, _balance_indexer, block_height):
     # block = _bitcoin_node.get_block_by_height(block_height)
     deal_data = _bitcoin_node.get_deal_data_by_block(block_height)
     if deal_data is None:
-        return True
+        shutdown_handler(None, None)
+        return False
     num_transactions = len(deal_data)
     # block_data = parse_block_data(block)
     success = _balance_indexer.create_rows_focused_on_balance_changes(deal_data, block_height)
