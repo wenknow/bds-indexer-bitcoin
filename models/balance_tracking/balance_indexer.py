@@ -100,17 +100,27 @@ class BalanceIndexer:
     # Set the precision high enough to handle satoshis for Bitcoin transactions
     getcontext().prec = 28
 
-    def create_rows_focused_on_balance_changes(self, block_data, _bitcoin_node):
-        block_height = block_data.block_height
-        block_timestamp = datetime.utcfromtimestamp(block_data.timestamp)
-        transactions = block_data.transactions
+    def create_rows_focused_on_balance_changes(self, block_data, block_height):
+        # block_height = block_data.block_height
+
+        block_timestamp = None
+        # transactions = block_data.transactions
 
         balance_changes_by_address = {}
         changed_addresses = []
 
-        for tx in transactions:
-            in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, _ = _bitcoin_node.process_in_memory_txn_for_indexing(
-                tx)
+        for value in block_data:
+            # in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, _ = _bitcoin_node.process_in_memory_txn_for_indexing(
+            #     tx)
+            in_amount_by_address = value['in_amount_by_address']
+            out_amount_by_address = value['out_amount_by_address']
+            input_addresses = value['input_addresses']
+            output_addresses = value['output_addresses']
+            # in_total_amount = value['in_total_amount']
+            # out_total_amount = value['out_total_amount']
+            tx_info = value['tx_info']
+            if block_timestamp is None:
+                block_timestamp = datetime.utcfromtimestamp(tx_info['timestamp'])
 
             for address in input_addresses:
                 if address not in balance_changes_by_address:

@@ -21,11 +21,14 @@ def shutdown_handler(signum, frame):
 
 
 def index_block(_bitcoin_node, _balance_indexer, block_height):
-    block = _bitcoin_node.get_block_by_height(block_height)
-    num_transactions = len(block["tx"])
     start_time = time.time()
-    block_data = parse_block_data(block)
-    success = _balance_indexer.create_rows_focused_on_balance_changes(block_data, _bitcoin_node)
+    # block = _bitcoin_node.get_block_by_height(block_height)
+    deal_data = _bitcoin_node.get_deal_data_by_block(block_height)
+    if deal_data is None:
+        return True
+    num_transactions = len(deal_data)
+    # block_data = parse_block_data(block)
+    success = _balance_indexer.create_rows_focused_on_balance_changes(deal_data, block_height)
     end_time = time.time()
     time_taken = end_time - start_time
     formatted_num_transactions = "{:>4}".format(num_transactions)
