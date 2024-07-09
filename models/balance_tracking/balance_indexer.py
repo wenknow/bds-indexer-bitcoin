@@ -100,7 +100,7 @@ class BalanceIndexer:
     # Set the precision high enough to handle satoshis for Bitcoin transactions
     getcontext().prec = 28
 
-    def create_rows_focused_on_balance_changes(self, block_data, block_height):
+    def create_rows_focused_on_balance_changes(self, deal_data, block_height):
         # block_height = block_data.block_height
 
         block_timestamp = None
@@ -109,7 +109,7 @@ class BalanceIndexer:
         balance_changes_by_address = {}
         changed_addresses = []
 
-        for value in block_data:
+        for value in deal_data.values():
             # in_amount_by_address, out_amount_by_address, input_addresses, output_addresses, in_total_amount, _ = _bitcoin_node.process_in_memory_txn_for_indexing(
             #     tx)
             in_amount_by_address = value['in_amount_by_address']
