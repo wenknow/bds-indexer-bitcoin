@@ -69,6 +69,10 @@ def deal(bitcoin_node, start_block, end_block):
     target_path = f"/deal_block/{start_block}-{end_block}.pkl"
     logger.info(f"target_path: {target_path}")
 
+    if os.path.exists(target_path):
+        logger.info(f"target_path already exist: {target_path}")
+        return
+
     # 设置外层线程池的大小，合理分配CPU核心
     num_outer_threads = 16  # 假设最多同时处理16个区块
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_outer_threads) as executor:
@@ -85,6 +89,7 @@ def deal(bitcoin_node, start_block, end_block):
             deal_table[block_height] = block_table
 
     save_hash_table(deal_table, target_path)  # 假设save_hash_table是保存字典的函数
+    logger.info(f"success save target_path: {target_path}")
 
 
 if __name__ == "__main__":
